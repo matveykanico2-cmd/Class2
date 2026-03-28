@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Класс 11-А | Школьный Портал</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4a76a8;
+            --success: #4bb34b;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+            --light: #f0f2f5;
+        }
+        body { background: var(--light); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar { background: var(--primary); box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .navbar-brand, .nav-link { color: white !important; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .card-header { background: white; border-bottom: 1px solid #eee; font-weight: 600; border-radius: 12px 12px 0 0 !important; }
+        .btn-primary { background: var(--primary); border: none; }
+        .btn-success { background: var(--success); border: none; }
+        .btn-danger { background: var(--danger); border: none; }
+        .btn-warning { background: var(--warning); border: none; color: #000; }
+        .grade-badge { display: inline-block; width: 40px; height: 40px; line-height: 40px; text-align: center; border-radius: 50%; font-weight: bold; color: white; }
+        .grade-5 { background: var(--success); }
+        .grade-4 { background: #5b9bd5; }
+        .grade-3 { background: var(--warning); color: #000; }
+        .grade-2 { background: var(--danger); }
+        .server-stat { text-align: center; padding: 20px; border-radius: 12px; color: white; }
+        .server-stat h3 { font-size: 14px; opacity: 0.9; margin: 0; }
+        .server-stat h1 { font-size: 36px; margin: 10px 0 0; }
+        .server-stat small { font-size: 12px; opacity: 0.8; }
+        .role-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+        .role-admin { background: var(--danger); color: white; }
+        .role-teacher { background: var(--primary); color: white; }
+        .role-student { background: var(--success); color: white; }
+        .log-item { border-left: 3px solid var(--primary); padding: 10px; margin-bottom: 10px; background: #f8f9fa; border-radius: 0 8px 8px 0; }
+        .login-box { max-width: 400px; margin: 100px auto; }
+        .nav-btn-group { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; }
+        
+        /* ЧАТ СТИЛИ */
+        .chat-container { height: 400px; display: flex; flex-direction: column; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #ddd; }
+        .chat-message { margin-bottom: 12px; padding: 10px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .chat-message.own { background: #e3f2fd; margin-left: 40px; }
+        .chat-message .author { font-weight: 600; color: var(--primary); }
+        .chat-message .time { font-size: 11px; color: #999; float: right; }
+        .chat-message .text { margin-top: 5px; }
+        .online-indicator { width: 10px; height: 10px; background: var(--success); border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .offline-indicator { width: 10px; height: 10px; background: #ccc; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .user-list-item { padding: 8px; border-bottom: 1px solid #eee; display: flex; align-items: center; }
+        .user-list-item:last-child { border-bottom: none; }
+        .email-badge { background: #e9ecef; padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #666; }
+        .new-message { animation: highlight 2s; }
+        @keyframes highlight {
+            0% { background: #fff3cd; }
+            100% { background: white; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Навигация -->
+<nav class="navbar navbar-expand-lg">
+    <div class="container">
+        <a class="navbar-brand" href="/"><i class="fas fa-school"></i> Класс 11-А</a>
+        <div class="navbar-nav ms-auto">
+            {% if current_user.is_authenticated %}
+            <span class="nav-link">
+                <i class="fas fa-user"></i> {{ current_user.full_name }} 
+                <span class="role-badge role-{{ current_user.role }}">{{ current_user.role }}</span>
+            </span>
+            <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Выход</a>
+            {% else %}
+            <a class="nav-link" href="?page=login"><i class="fas fa-sign-in-alt"></i> Вход</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="container py-4">
+    
+    <!-- Уведомления -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- ==================== ВХОД ==================== -->
+    {% if page == 'login' %}
+    <div class="card login-box">
+        <div class="card-header text-center">
+            <i class="fas fa-sign-in-alt"></i> Вход в систему
+        </div>
+        <div class="card-body">
+            <form method="POST" action="/login">
+                <div class="mb-3">
+                    <label class="form-label">Логин</label>
+                    <input type="text" name="username" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Войти</button>
+            </form>
+            <hr>
+            <div class="alert alert-info mb-0">
+                <strong>🔐 Тестовые аккаунты:</strong><br>
+                <p class="mb-1"><strong>🔧 Админ:</strong> admin / admin</p>
+                <p class="mb-1"><strong>👩‍🏫 Учитель:</strong> elena / elena</p>
+                <p class="mb-0"><strong>🎓 Ученики:</strong> логин / 123</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ==================== ГЛАВНАЯ ==================== -->
+    {% if page == 'home' or page == '' %}
+    <div class="row">
+        <!-- Оценки -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-book"></i> Электронный журнал
+                </div>
+                <div class="card-body">
+                    {% if current_user.is_authenticated and current_user.role in ['admin', 'teacher'] %}
+                    <form method="POST" action="/action" class="row g-2 mb-3">
+                        <input type="hidden" name="action_type" value="grade">
+                        <div class="col-4">
+                            <input type="text" name="student" class="form-control form-control-sm" placeholder="Ученик" required>
+                        </div>
+                        <div class="col-4">
+                            <input type="text" name="subject" class="form-control form-control-sm" placeholder="Предмет" required>
+                        </div>
+                        <div class="col-2">
+                            <input type="number" name="grade" class="form-control form-control-sm" placeholder="5" min="2" max="5" required>
+                        </div>
+                        <div class="col-2">
+                            <button type="submit" class="btn btn-success btn-sm w-100">OK</button>
+                        </div>
+                    </form>
+                    {% endif %}
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>Ученик</th><th>Предмет</th><th>Оценка</th><th>Дата</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for g in grades %}
+                            <tr>
+                                <td>{{ g.student }}</td>
+                                <td>{{ g.subject }}</td>
+                                <td><span class="grade-badge grade-{{ g.grade }}">{{ g.grade }}</span></td>
+                                <td>{{ g.date.strftime('%d.%m') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" class="text-center text-muted">Нет оценок</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Домашка -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-home"></i> Домашние задания
+                </div>
+                <div class="card-body">
+                    {% if current_user.is_authenticated and current_user.role in ['admin', 'teacher'] %}
+                    <form method="POST" action="/action" class="row g-2 mb-3">
+                        <input type="hidden" name="action_type" value="homework">
+                        <div class="col-4">
+                            <input type="text" name="subject" class="form-control form-control-sm" placeholder="Предмет" required>
+                        </div>
+                        <div class="col-5">
+                            <input type="text" name="task" class="form-control form-control-sm" placeholder="Задание" required>
+                        </div>
+                        <div class="col-3">
+                            <input type="text" name="deadline" class="form-control form-control-sm" placeholder="Срок" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100">+</button>
+                    </form>
+                    {% endif %}
+                    {% for hw in homework %}
+                    <div class="border-bottom py-2">
+                        <strong class="text-primary">{{ hw.subject }}</strong>
+                        <span class="badge bg-warning text-dark float-end">{{ hw.deadline }}</span>
+                        <p class="mb-0 small">{{ hw.task }}</p>
+                        <small class="text-muted">{{ hw.teacher }}</small>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">Нет домашних заданий</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Расписание -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-calendar-alt"></i> Расписание уроков
+        </div>
+        <div class="card-body">
+            {% if current_user.is_authenticated and current_user.role in ['admin', 'teacher'] %}
+            <form method="POST" action="/action" class="row g-2 mb-3">
+                <input type="hidden" name="action_type" value="schedule">
+                <div class="col-2">
+                    <input type="text" name="day" class="form-control form-control-sm" placeholder="День" required>
+                </div>
+                <div class="col-1">
+                    <input type="number" name="lesson_num" class="form-control form-control-sm" placeholder="№" required>
+                </div>
+                <div class="col-3">
+                    <input type="text" name="subject" class="form-control form-control-sm" placeholder="Предмет" required>
+                </div>
+                <div class="col-3">
+                    <input type="text" name="teacher" class="form-control form-control-sm" placeholder="Учитель" required>
+                </div>
+                <div class="col-2">
+                    <input type="text" name="room" class="form-control form-control-sm" placeholder="Кабинет" required>
+                </div>
+                <div class="col-1">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">+</button>
+                </div>
+            </form>
+            {% endif %}
+            <table class="table table-sm">
+                <thead>
+                    <tr><th>День</th><th>№</th><th>Предмет</th><th>Учитель</th><th>Кабинет</th></tr>
+                </thead>
+                <tbody>
+                    {% for s in schedule %}
+                    <tr>
+                        <td>{{ s.day }}</td>
+                        <td>{{ s.lesson_num }}</td>
+                        <td>{{ s.subject }}</td>
+                        <td>{{ s.teacher }}</td>
+                        <td>{{ s.room }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center text-muted">Нет расписания</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ==================== ОНЛАЙН ЧАТ ==================== -->
+    {% if page == 'chat' or page == '' %}
+    <div class="row">
+        <!-- Сообщения чата -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-comments"></i> Онлайн чат класса
+                    <span class="badge bg-light text-dark float-end" id="online-count">0 онлайн</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="chat-container">
+                        <div class="chat-messages" id="chat-messages">
+                            <div class="text-center text-muted py-5">
+                                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                <p class="mt-2">Загрузка сообщений...</p>
+                            </div>
+                        </div>
+                        {% if current_user.is_authenticated %}
+                        <form method="POST" action="/send_message" class="p-3 border-top">
+                            <div class="input-group">
+                                <input type="text" name="message" id="chat-input" class="form-control" placeholder="Напишите сообщение..." required autocomplete="off">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-paper-plane"></i> Отправить
+                                </button>
+                            </div>
+                        </form>
+                        {% else %}
+                        <div class="p-3 text-center text-muted">
+                            <a href="?page=login">Войдите</a>, чтобы писать в чат
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Список пользователей онлайн -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-users"></i> Участники
+                </div>
+                <div class="card-body p-0">
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        {% for user in all_users %}
+                        <div class="user-list-item">
+                            <span class="{% if user.is_online %}online-indicator{% else %}offline-indicator{% endif %}"></span>
+                            <div class="flex-grow-1">
+                                <strong>{{ user.full_name }}</strong>
+                                <div class="email-badge">{{ user.email }}</div>
+                            </div>
+                            <span class="role-badge role-{{ user.role }}">{{ user.role }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ==================== ПАНЕЛЬ АДМИНА (СЕРВЕР) ==================== -->
+    {% if page == 'admin' and current_user.is_authenticated and current_user.role == 'admin' %}
+    <h4 class="mb-4">
+        <i class="fas fa-server"></i> Панель управления сервером
+        <span class="badge bg-info float-end">{{ server_stats.uptime }}</span>
+    </h4>
+    
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="server-stat bg-danger">
+                <h3><i class="fas fa-microchip"></i> CPU</h3>
+                <h1>{{ server_stats.cpu }}%</h1>
+                <small>{{ server_stats.cpu_cores }} ядер</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="server-stat bg-warning text-dark">
+                <h3><i class="fas fa-memory"></i> RAM</h3>
+                <h1>{{ server_stats.ram_percent }}%</h1>
+                <small>{{ server_stats.ram_used }} / {{ server_stats.ram_total }} GB</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="server-stat bg-info">
+                <h3><i class="fas fa-hdd"></i> DISK</h3>
+                <h1>{{ server_stats.disk_percent }}%</h1>
+                <small>{{ server_stats.disk_used }} / {{ server_stats.disk_total }} GB</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="server-stat bg-success">
+                <h3><i class="fas fa-clock"></i> UPTIME</h3>
+                <h1>{{ server_stats.uptime }}</h1>
+                <small>PID: {{ server_stats.pid }}</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Управление сервером -->
+    <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+            <i class="fas fa-cogs"></i> Управление сервером
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <form method="POST" action="/action" onsubmit="return confirm('Перезапустить сервер?')">
+                        <input type="hidden" name="action_type" value="server_restart">
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="fas fa-redo"></i> Перезапуск
+                        </button>
+                    </form>
+                </div>
+                <div class="col-md-3">
+                    <form method="POST" action="/action" onsubmit="return confirm('Остановить сервер?')">
+                        <input type="hidden" name="action_type" value="server_stop">
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="fas fa-stop"></i> Остановка
+                        </button>
+                    </form>
+                </div>
+                <div class="col-md-3">
+                    <form method="POST" action="/action" onsubmit="return confirm('Очистить логи?')">
+                        <input type="hidden" name="action_type" value="server_clear_logs">
+                        <button type="submit" class="btn btn-info w-100">
+                            <i class="fas fa-trash"></i> Очистить логи
+                        </button>
+                    </form>
+                </div>
+                <div class="col-md-3">
+                    <form method="POST" action="/action" onsubmit="return confirm('Очистить базу данных?')">
+                        <input type="hidden" name="action_type" value="server_clear_db">
+                        <button type="submit" class="btn btn-secondary w-100">
+                            <i class="fas fa-database"></i> Очистить БД
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="alert alert-warning mt-3 mb-0">
+                <i class="fas fa-exclamation-triangle"></i> 
+                <strong>Внимание!</strong> Остановка сервера потребует ручного запуска через терминал.
+            </div>
+        </div>
+    </div>
+
+    <!-- Логи сервера -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-clipboard-list"></i> Журнал действий админа
+        </div>
+        <div class="card-body">
+            {% for log in logs %}
+            <div class="log-item">
+                <strong>{{ log.action }}</strong><br>
+                <small class="text-muted">👤 {{ log.admin }} | 🕐 {{ log.date.strftime('%d.%m.%Y %H:%M:%S') }}</small>
+            </div>
+            {% else %}
+            <p class="text-muted text-center">Нет записей</p>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- Навигация по страницам -->
+<div class="container nav-btn-group">
+    <div class="btn-group shadow" role="group">
+        <a href="/?page=home" class="btn btn-primary">
+            <i class="fas fa-home"></i> Главная
+        </a>
+        <a href="/?page=chat" class="btn btn-success">
+            <i class="fas fa-comments"></i> Чат
+        </a>
+        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+        <a href="/?page=admin" class="btn btn-danger">
+            <i class="fas fa-server"></i> Сервер
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<footer class="text-center py-4 text-muted">
+    <small>Python Flask Server | Class Website 2024</small>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Автообновление чата каждые 3 секунды
+function loadChat() {
+    fetch('/api/chat/messages')
+        .then(response => response.json())
+        .then(messages => {
+            const chatBox = document.getElementById('chat-messages');
+            if (chatBox) {
+                let html = '';
+                messages.forEach(msg => {
+                    const isOwn = msg.username === '{{ current_user.full_name if current_user.is_authenticated else "" }}';
+                    html += `
+                        <div class="chat-message ${isOwn ? 'own' : 'new-message'}">
+                            <span class="author">${msg.username}</span>
+                            <span class="time">${msg.timestamp}</span>
+                            <div class="text">${msg.message}</div>
+                        </div>
+                    `;
+                });
+                chatBox.innerHTML = html;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        });
+    
+    // Обновляем счётчик онлайн
+    fetch('/api/chat/online')
+        .then(response => response.json())
+        .then(users => {
+            const countBadge = document.getElementById('online-count');
+            if (countBadge) {
+                countBadge.textContent = users.length + ' онлайн';
+            }
+        });
+}
+
+// Запускаем обновление чата
+setInterval(loadChat, 3000);
+loadChat();
+
+// Автофокус на поле ввода
+document.addEventListener('DOMContentLoaded', function() {
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.focus();
+    }
+});
+</script>
+</body>
+</html>
